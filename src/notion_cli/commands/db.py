@@ -28,7 +28,7 @@ def query_database(
 ) -> None:
     """Query a database."""
     try:
-        db_schema = client.get_database(database_id)
+        db_schema = client.get_database_schema(database_id)
         rows = client.query_database(database_id, page_size=limit)
         format_database_rows(rows, db_schema)
     except client.NotionClientError as e:

@@ -54,8 +54,20 @@ def query_database(
     filter_obj: dict | None = None,
     page_size: int = 100,
 ) -> list[dict]:
-    """Query a database with pagination support."""
+    """Query a database with pagination support.
+
+    Note: Notion API 2025-09-03 separates databases and data sources.
+    This function retrieves the data_source_id from the database first.
+    """
     client = get_client()
+
+    # Get the data_source_id from the database (new API requirement)
+    db = get_database(database_id)
+    data_sources = db.get("data_sources", [])
+    if not data_sources:
+        raise NotionClientError("Database has no data sources")
+    data_source_id = data_sources[0].get("id")
+
     all_results: list[dict] = []
     has_more = True
     next_cursor: str | None = None
@@ -64,7 +76,6 @@ def query_database(
         while has_more:
             remaining = page_size - len(all_results)
             params: dict[str, Any] = {
-                "database_id": database_id,
                 "page_size": min(remaining, 100),
             }
             if filter_obj:
@@ -72,7 +83,7 @@ def query_database(
             if next_cursor:
                 params["start_cursor"] = next_cursor
 
-            response = client.databases.query(**params)
+            response = client.data_sources.query(data_source_id=data_source_id, **params)
             all_results.extend(response.get("results", []))
 
             has_more = response.get("has_more", False)
@@ -89,7 +100,7 @@ def query_database(
 
 def get_title_property_name(database_id: str) -> str:
     """Get the name of the title property in a database."""
-    db = get_database(database_id)
+    db = get_database_schema(database_id)
     properties = db.get("properties", {})
     for name, prop in properties.items():
         if prop.get("type") == "title":
@@ -104,6 +115,28 @@ def get_database(database_id: str) -> dict:
         return client.databases.retrieve(database_id=database_id)
     except APIResponseError as e:
         raise NotionClientError(f"Failed to get database: {e}") from e
+
+
+def get_data_source(data_source_id: str) -> dict:
+    """Get data source metadata (includes properties/schema)."""
+    client = get_client()
+    try:
+        return client.data_sources.retrieve(data_source_id=data_source_id)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to get data source: {e}") from e
+
+
+def get_database_schema(database_id: str) -> dict:
+    """Get database schema from its data source.
+
+    In Notion API 2025-09-03, properties are on data_source, not database.
+    """
+    db = get_database(database_id)
+    data_sources = db.get("data_sources", [])
+    if not data_sources:
+        raise NotionClientError("Database has no data sources")
+    data_source_id = data_sources[0].get("id")
+    return get_data_source(data_source_id)
 
 
 def get_page(page_id: str) -> dict:

@@ -83,7 +83,21 @@ def format_database_rows(rows: list[dict], db_schema: dict) -> None:
         return
 
     properties = db_schema.get("properties", {})
-    prop_names = list(properties.keys())[:5]
+
+    # Prioritize title and status columns, then add others
+    priority_types = ["title", "status"]
+    priority_cols = []
+    other_cols = []
+
+    for name, prop in properties.items():
+        if prop.get("type") in priority_types:
+            priority_cols.append((name, prop.get("type")))
+        else:
+            other_cols.append(name)
+
+    # Sort priority columns: title first, then status
+    priority_cols.sort(key=lambda x: priority_types.index(x[1]))
+    prop_names = [name for name, _ in priority_cols] + other_cols[:5 - len(priority_cols)]
 
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("ID", style="dim", width=12)

@@ -47,3 +47,20 @@ src/notion_cli/
 - Filter type for databases is `"data_source"` (not `"database"`)
 - Databases must be explicitly shared with the integration to be queried
 - Search API returns results but direct database queries require connection permissions
+
+### Notion API 2025-09-03 Breaking Changes
+
+The API separates **databases** and **data sources**:
+
+| Endpoint | Returns |
+|----------|---------|
+| `databases.retrieve()` | Database metadata (no properties!) |
+| `data_sources.retrieve()` | Data source with properties/schema |
+| `data_sources.query()` | Query results (replaces `databases.query`) |
+
+**Query workflow:**
+1. `databases.retrieve(database_id)` → get `data_sources[0].id`
+2. `data_sources.retrieve(data_source_id)` → get schema/properties
+3. `data_sources.query(data_source_id)` → get rows
+
+**CLI mapping:** User-friendly `--type database` is mapped to API's `data_source`
