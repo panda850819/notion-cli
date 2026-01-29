@@ -19,7 +19,9 @@ def create_task(
 ) -> None:
     """Create a new task in a database."""
     try:
-        properties = {"Name": {"title": [{"text": {"content": title}}]}}
+        # Auto-detect title property name
+        title_prop = client.get_title_property_name(database_id)
+        properties = {title_prop: {"title": [{"text": {"content": title}}]}}
 
         if status:
             properties["Status"] = {"status": {"name": status}}
@@ -36,13 +38,20 @@ def update_task(
     page_id: str = typer.Argument(..., help="Task/Page ID"),
     status: str = typer.Option(None, "--status", "-s", help="New status"),
     title: str = typer.Option(None, "--title", "-t", help="New title"),
+    database_id: str = typer.Option(
+        None, "--db", "-d", help="Database ID (needed for title update)"
+    ),
 ) -> None:
     """Update a task."""
     try:
-        properties = {}
+        properties: dict = {}
 
         if title:
-            properties["Name"] = {"title": [{"text": {"content": title}}]}
+            if database_id:
+                title_prop = client.get_title_property_name(database_id)
+            else:
+                title_prop = "Name"  # fallback
+            properties[title_prop] = {"title": [{"text": {"content": title}}]}
 
         if status:
             properties["Status"] = {"status": {"name": status}}

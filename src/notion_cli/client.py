@@ -2,6 +2,7 @@
 
 import os
 from functools import lru_cache
+from typing import Any
 
 from dotenv import load_dotenv
 from notion_client import Client
@@ -31,7 +32,7 @@ def get_client() -> Client:
 def search(query: str, filter_type: str | None = None) -> list[dict]:
     """Search Notion workspace."""
     client = get_client()
-    params = {"query": query}
+    params: dict[str, Any] = {"query": query}
     if filter_type:
         params["filter"] = {"property": "object", "value": filter_type}
 
@@ -48,18 +49,51 @@ def list_databases() -> list[dict]:
     return search("", filter_type="data_source")
 
 
-def query_database(database_id: str, filter_obj: dict | None = None) -> list[dict]:
-    """Query a database."""
+def query_database(
+    database_id: str,
+    filter_obj: dict | None = None,
+    page_size: int = 100,
+) -> list[dict]:
+    """Query a database with pagination support."""
     client = get_client()
-    params = {"database_id": database_id}
-    if filter_obj:
-        params["filter"] = filter_obj
+    all_results: list[dict] = []
+    has_more = True
+    next_cursor: str | None = None
 
     try:
-        response = client.databases.query(**params)
-        return response.get("results", [])
+        while has_more:
+            params: dict[str, Any] = {
+                "database_id": database_id,
+                "page_size": min(page_size, 100),
+            }
+            if filter_obj:
+                params["filter"] = filter_obj
+            if next_cursor:
+                params["start_cursor"] = next_cursor
+
+            response = client.databases.query(**params)
+            all_results.extend(response.get("results", []))
+
+            has_more = response.get("has_more", False)
+            next_cursor = response.get("next_cursor")
+
+            # Stop if we've collected enough
+            if len(all_results) >= page_size:
+                break
+
+        return all_results[:page_size]
     except APIResponseError as e:
         raise NotionClientError(f"Database query failed: {e}") from e
+
+
+def get_title_property_name(database_id: str) -> str:
+    """Get the name of the title property in a database."""
+    db = get_database(database_id)
+    properties = db.get("properties", {})
+    for name, prop in properties.items():
+        if prop.get("type") == "title":
+            return name
+    return "Name"  # fallback
 
 
 def get_database(database_id: str) -> dict:

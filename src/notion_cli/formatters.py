@@ -17,8 +17,9 @@ def get_title(item: dict) -> str:
         if title_list:
             return title_list[0].get("plain_text", "Untitled")
         # Try name field for data_source
-        if item.get("name"):
-            return item.get("name")
+        name = item.get("name")
+        if name:
+            return name
         return "Untitled Database"
 
     if obj_type == "page":

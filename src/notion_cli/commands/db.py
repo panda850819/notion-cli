@@ -29,8 +29,8 @@ def query_database(
     """Query a database."""
     try:
         db_schema = client.get_database(database_id)
-        rows = client.query_database(database_id)
-        format_database_rows(rows[:limit], db_schema)
+        rows = client.query_database(database_id, page_size=limit)
+        format_database_rows(rows, db_schema)
     except client.NotionClientError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise SystemExit(1)

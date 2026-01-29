@@ -13,3 +13,8 @@ dependencies = [
 
 [project.scripts]
 notion = "notion_cli.main:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
