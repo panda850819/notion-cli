@@ -39,7 +39,7 @@ def update_task(
     status: str = typer.Option(None, "--status", "-s", help="New status"),
     title: str = typer.Option(None, "--title", "-t", help="New title"),
     database_id: str = typer.Option(
-        None, "--db", "-d", help="Database ID (needed for title update)"
+        None, "--db", "-d", help="Database ID (for auto-detecting title property)"
     ),
 ) -> None:
     """Update a task."""

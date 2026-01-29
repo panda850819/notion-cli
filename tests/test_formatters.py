@@ -1,6 +1,5 @@
 """Tests for formatters module."""
 
-import pytest
 from notion_cli.formatters import get_title, extract_property_value
 
 

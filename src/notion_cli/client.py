@@ -62,9 +62,10 @@ def query_database(
 
     try:
         while has_more:
+            remaining = page_size - len(all_results)
             params: dict[str, Any] = {
                 "database_id": database_id,
-                "page_size": min(page_size, 100),
+                "page_size": min(remaining, 100),
             }
             if filter_obj:
                 params["filter"] = filter_obj
