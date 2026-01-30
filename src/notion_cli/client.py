@@ -149,11 +149,25 @@ def get_page(page_id: str) -> dict:
 
 
 def get_page_content(page_id: str) -> list[dict]:
-    """Get page content (blocks)."""
+    """Get page content (blocks) with full pagination support."""
     client = get_client()
+    all_blocks: list[dict] = []
+    next_cursor: str | None = None
+
     try:
-        response = client.blocks.children.list(block_id=page_id)
-        return response.get("results", [])
+        while True:
+            params: dict[str, Any] = {"block_id": page_id}
+            if next_cursor:
+                params["start_cursor"] = next_cursor
+
+            response = client.blocks.children.list(**params)
+            all_blocks.extend(response.get("results", []))
+
+            if not response.get("has_more"):
+                break
+            next_cursor = response.get("next_cursor")
+
+        return all_blocks
     except APIResponseError as e:
         raise NotionClientError(f"Failed to get page content: {e}") from e
 
@@ -183,3 +197,86 @@ def update_page(page_id: str, properties: dict) -> dict:
         return client.pages.update(page_id=page_id, properties=properties)
     except APIResponseError as e:
         raise NotionClientError(f"Failed to update page: {e}") from e
+
+
+def get_block(block_id: str) -> dict:
+    """Get a single block."""
+    client = get_client()
+    try:
+        return client.blocks.retrieve(block_id=block_id)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to get block: {e}") from e
+
+
+def delete_block(block_id: str) -> dict:
+    """Delete a single block."""
+    client = get_client()
+    try:
+        return client.blocks.delete(block_id=block_id)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to delete block: {e}") from e
+
+
+def update_block(block_id: str, block_data: dict) -> dict:
+    """Update a single block.
+
+    block_data should contain the block type and its content, e.g.:
+    {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello"}}]}}
+    """
+    client = get_client()
+    try:
+        return client.blocks.update(block_id=block_id, **block_data)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to update block: {e}") from e
+
+
+def clear_page_content(page_id: str) -> int:
+    """Delete all blocks from a page with full pagination support.
+
+    Returns the number of blocks deleted.
+    """
+    client = get_client()
+    deleted = 0
+
+    try:
+        # Keep fetching and deleting until no blocks remain
+        while True:
+            response = client.blocks.children.list(block_id=page_id)
+            blocks = response.get("results", [])
+
+            if not blocks:
+                break
+
+            for block in blocks:
+                client.blocks.delete(block_id=block["id"])
+                deleted += 1
+
+        return deleted
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to clear page content: {e}") from e
+
+
+def append_page_content(page_id: str, blocks: list[dict]) -> int:
+    """Append blocks to a page.
+
+    Handles Notion API's 100 block limit per request.
+    Returns the number of blocks appended.
+    """
+    client = get_client()
+    try:
+        for i in range(0, len(blocks), 100):
+            chunk = blocks[i:i + 100]
+            client.blocks.children.append(block_id=page_id, children=chunk)
+        return len(blocks)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to append page content: {e}") from e
+
+
+def replace_page_content(page_id: str, blocks: list[dict]) -> dict:
+    """Replace all content of a page with new blocks.
+
+    Returns a dict with 'deleted' and 'added' counts.
+    """
+    deleted = clear_page_content(page_id)
+    added = append_page_content(page_id, blocks)
+    return {"deleted": deleted, "added": added}

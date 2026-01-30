@@ -11,3 +11,9 @@ wheels/
 
 # Environment variables
 .env
+
+# Claude Code context files
+**/CLAUDE.md
+
+# Personal planning docs
+30-60-90-plan*.md

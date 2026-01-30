@@ -2,7 +2,7 @@
 
 import typer
 
-from notion_cli.commands import search, db, page, task
+from notion_cli.commands import search, db, page, task, block
 
 app = typer.Typer(
     name="notion",
@@ -13,6 +13,7 @@ app = typer.Typer(
 app.add_typer(db.app, name="db", help="Database operations")
 app.add_typer(page.app, name="page", help="Page operations")
 app.add_typer(task.app, name="task", help="Task operations")
+app.add_typer(block.app, name="block", help="Block operations")
 
 
 @app.command("search")
