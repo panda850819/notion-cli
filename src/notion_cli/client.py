@@ -190,6 +190,35 @@ def create_page(
         raise NotionClientError(f"Failed to create page: {e}") from e
 
 
+def create_child_page(
+    parent_page_id: str, title: str, content: list[dict] | None = None
+) -> dict:
+    """Create a child page under an existing page.
+
+    Args:
+        parent_page_id: The ID of the parent page
+        title: The title of the new child page
+        content: Optional list of block objects for page content
+
+    Returns:
+        The created page object
+    """
+    client = get_client()
+    params: dict[str, Any] = {
+        "parent": {"page_id": parent_page_id},
+        "properties": {
+            "title": [{"type": "text", "text": {"content": title}}]
+        },
+    }
+    if content:
+        params["children"] = content
+
+    try:
+        return client.pages.create(**params)
+    except APIResponseError as e:
+        raise NotionClientError(f"Failed to create child page: {e}") from e
+
+
 def update_page(page_id: str, properties: dict) -> dict:
     """Update a page."""
     client = get_client()

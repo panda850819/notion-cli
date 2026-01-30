@@ -14,6 +14,44 @@ app = typer.Typer()
 console = Console()
 
 
+@app.command("create")
+def create_child_page(
+    parent_id: str = typer.Argument(..., help="Parent page ID"),
+    title: str = typer.Argument(..., help="Title for the new page"),
+    file: Annotated[
+        Path | None,
+        typer.Option("--file", "-f", help="Markdown file for initial content")
+    ] = None,
+) -> None:
+    """Create a child page under an existing page.
+
+    Example:
+        notion page create PARENT_ID "My New Page"
+        notion page create PARENT_ID "My New Page" --file content.md
+    """
+    try:
+        blocks = None
+        if file:
+            if not file.exists():
+                console.print(f"[red]Error:[/red] File not found: {file}")
+                raise SystemExit(1)
+            markdown = file.read_text()
+            blocks = markdown_to_blocks(markdown)
+            console.print(f"Parsed {len(blocks)} blocks from markdown")
+
+        page = client.create_child_page(parent_id, title, blocks)
+        page_id = page["id"]
+        page_url = f"https://www.notion.so/{page_id.replace('-', '')}"
+
+        console.print(f"[green]✓[/green] Created page: {title}")
+        console.print(f"Page ID: {page_id}")
+        console.print(f"View at: {page_url}")
+
+    except client.NotionClientError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise SystemExit(1)
+
+
 @app.command("get")
 def get_page(
     page_id: str = typer.Argument(..., help="Page ID"),
